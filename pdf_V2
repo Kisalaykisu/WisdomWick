@@ -1,0 +1,86 @@
+import spacy
+import fitz  # PyMuPDF
+
+import os
+import glob
+
+# Function to get a list of all PDF files in a category's directory
+def get_pdfs_in_category(category_name):
+    # Construct the path to the category directory
+    category_dir = os.path.join("path/to/categories", category_name)  # Adjust the base path as needed
+    
+    # Use glob to list all PDF files in the directory
+    pdf_files = glob.glob(os.path.join(category_dir, "*.pdf"))
+    return pdf_files
+
+# Function to determine the category of a question
+def determine_question_category(question):
+    # Your logic to determine the category
+    # ...
+
+# The rest of your functions to extract text from PDF, find answers, etc.
+# ...
+
+# Example of how to use the get_pdfs_in_category function
+ category = "Programming"  # For example, you determined this based on the user's question
+ pdfs_in_category = get_pdfs_in_category(category)
+
+# Now pdfs_in_category contains all the paths to PDFs in the weather category
+
+# Initialize spaCy NLP model
+nlp = spacy.load("en_core_web_sm")
+
+# Function to extract text from all pages of a given PDF
+def extract_text_from_pdf(pdf_path):
+    pdf_document = fitz.open(pdf_path)
+    text_by_page = []
+    for page_num in range(pdf_document.page_count):
+        page = pdf_document[page_num]
+        text = page.get_text()
+        text_by_page.append(text.lower())  # Store text as lowercase to ease comparison
+    pdf_document.close()
+    return text_by_page
+
+# Function to analyze question and search PDF text for an answer
+def find_answer_in_pdf(text_by_page, question):
+    # Analyze the question
+    question_doc = nlp(question.lower())
+    question_keywords = [token.lemma_ for token in question_doc if not token.is_stop and not token.is_punct]
+    
+    # Search for the best match
+    best_match = None
+    highest_score = 0
+    for i, page_text in enumerate(text_by_page):
+        page_doc = nlp(page_text)
+        score = sum(1 for token in page_doc if token.lemma_ in question_keywords)
+        if score > highest_score:
+            highest_score = score
+            best_match = (i, page_text)
+    
+    if best_match:
+        page_num, page_text = best_match
+        # You could add additional logic here to further process the page_text
+        # and extract the specific sentence or paragraph relevant to the question.
+        return f"The information might be on page {page_num + 1}:\n{page_text[:200]}..."  # Show a snippet
+    else:
+        return "I couldn't find information related to your question in the document."
+
+# Load the PDF and index its text
+pdf_path = "C:/Users/Kisalay/Downloads/Jonas-html_CSS/html-css-course/starter/04-CSS-Layouts/bot_pdf/Programming/Core-JAVA.pdf"  # Replace with your PDF's path
+text_by_page = extract_text_from_pdf(pdf_path)
+
+# Main interaction loop
+def interact_with_bot():
+    print("Hello! I'm your PDF assistant. How can I help you with the document? (Type 'exit' to quit)")
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == "exit":
+            print("Goodbye! Have a great day.")
+            break
+        
+        # Find answer in the PDF based on the user's question
+        response = find_answer_in_pdf(text_by_page, user_input)
+        print(f"Bot: {response}")
+
+if __name__ == "__main__":
+    interact_with_bot()
